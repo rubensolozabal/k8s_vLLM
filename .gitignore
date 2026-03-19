@@ -1,0 +1,6 @@
+.venv/
+.ipynb_checkpoints/
+Miniconda3-latest-Linux-x86_64.sh
+uv.lock
+__pycache__/
+*.pyc

@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-stack
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mlflow-data
+  namespace: ai-stack
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow
+  namespace: ai-stack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mlflow
+  template:
+    metadata:
+      labels:
+        app: mlflow
+    spec:
+      containers:
+        - name: mlflow
+          image: ghcr.io/mlflow/mlflow:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - mlflow
+          args:
+            - server
+            - --host
+            - 0.0.0.0
+            - --port
+            - "5000"
+            - --backend-store-uri
+            - sqlite:////mlflow/mlflow.db
+            - --default-artifact-root
+            - file:///mlflow/artifacts
+            - --allowed-hosts
+            - "*"
+            - --cors-allowed-origins
+            - "*"
+          ports:
+            - name: http
+              containerPort: 5000
+          volumeMounts:
+            - name: storage
+              mountPath: /mlflow
+          startupProbe:
+            tcpSocket:
+              port: 5000
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: 5000
+          livenessProbe:
+            tcpSocket:
+              port: 5000
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: mlflow-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow
+  namespace: ai-stack
+spec:
+  selector:
+    app: mlflow
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mlflow
+  namespace: ai-stack
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: mlflow.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mlflow
+                port:
+                  number: 5000
