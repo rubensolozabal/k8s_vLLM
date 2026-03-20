@@ -43,6 +43,7 @@ Production-ready Kubernetes deployment for serving LLMs with [vLLM](https://gith
 
 - Kubernetes cluster with **2+ GPU nodes** (NVIDIA)
 - [NVIDIA GPU Operator](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/) installed
+- GPU worker nodes labeled with `accelerator=nvidia` (see step 2 below)
 - `kubectl` configured to access the cluster
 - [uv](https://docs.astral.sh/uv/) package manager
 - Python ≥ 3.13.7
@@ -60,7 +61,25 @@ uv sync
 source .venv/bin/activate
 ```
 
-### 2. Deploy to Kubernetes
+### 2. Label GPU Nodes
+
+The vLLM deployment uses a `nodeSelector` to schedule pods only on GPU-equipped nodes. You must label your GPU worker nodes **before** deploying:
+
+```bash
+# List nodes and identify GPU workers
+kubectl get nodes -o wide
+
+# Label each GPU node (replace with your actual node names)
+kubectl label node <gpu-node-1> accelerator=nvidia
+kubectl label node <gpu-node-2> accelerator=nvidia
+
+# Verify labels
+kubectl get nodes -l accelerator=nvidia
+```
+
+> **Important:** Without this label, vLLM pods will remain in `Pending` state indefinitely. The scheduler error will show: *"node(s) didn't match Pod's node affinity/selector"*.
+
+### 3. Deploy to Kubernetes
 
 Deploy the stack in order — the namespace `ai-stack` is created automatically:
 
@@ -75,7 +94,7 @@ kubectl apply -f mlflow.yaml
 kubectl apply -f monitoring.yaml
 ```
 
-### 3. Verify Deployment
+### 4. Verify Deployment
 
 ```bash
 # Check all pods are running
@@ -95,7 +114,7 @@ kubectl get pods -n ai-stack
 > kubectl get pods -n ai-stack -w
 > ```
 
-### 4. Access Services
+### 5. Access Services
 
 The services are deployed as `ClusterIP` by default. Choose an access method:
 
@@ -126,7 +145,7 @@ kubectl get svc -n ai-stack
 
 Then access via `http://<node-ip>:<node-port>`.
 
-### 5. Run the Client Notebook
+### 6. Run the Client Notebook
 
 Open `client.ipynb` in JupyterLab or VS Code and update the connection variables in cell 1:
 
