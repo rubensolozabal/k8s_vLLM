@@ -79,12 +79,29 @@ kubectl get nodes -l accelerator=nvidia
 
 > **Important:** Without this label, vLLM pods will remain in `Pending` state indefinitely. The scheduler error will show: *"node(s) didn't match Pod's node affinity/selector"*.
 
-### 3. Deploy to Kubernetes
+### 3. Configure HuggingFace Token
+
+vLLM needs a HuggingFace token to download gated models. Create the secret **before** deploying:
+
+**Option A: Edit the YAML** — replace `YOUR_TOKEN_HERE` in `vllm.yaml` with your token, then apply normally.
+
+**Option B: Create via CLI** (recommended — avoids committing secrets):
+
+```bash
+kubectl create namespace ai-stack
+kubectl create secret generic hf-token -n ai-stack \
+  --from-literal=HF_TOKEN=hf_<YOUR_TOKEN>
+```
+
+> Get a token at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens). The token needs **read** access to the model repository.
+
+### 4. Deploy to Kubernetes
 
 Deploy the stack in order — the namespace `ai-stack` is created automatically:
 
 ```bash
 # Deploy vLLM inference servers (2 replicas with GPU)
+# If you created the secret via CLI (Option B), the Secret in vllm.yaml will be skipped
 kubectl apply -f vllm.yaml
 
 # Deploy MLflow tracking server
@@ -94,7 +111,7 @@ kubectl apply -f mlflow.yaml
 kubectl apply -f monitoring.yaml
 ```
 
-### 4. Verify Deployment
+### 5. Verify Deployment
 
 ```bash
 # Check all pods are running
@@ -114,7 +131,7 @@ kubectl get pods -n ai-stack
 > kubectl get pods -n ai-stack -w
 > ```
 
-### 5. Access Services
+### 6. Access Services
 
 The services are deployed as `ClusterIP` by default. Choose an access method:
 
@@ -145,7 +162,7 @@ kubectl get svc -n ai-stack
 
 Then access via `http://<node-ip>:<node-port>`.
 
-### 6. Run the Client Notebook
+### 7. Run the Client Notebook
 
 Open `client.ipynb` in JupyterLab or VS Code and update the connection variables in cell 1:
 

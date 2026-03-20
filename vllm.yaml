@@ -10,7 +10,7 @@ metadata:
   namespace: ai-stack
 type: Opaque
 stringData:
-  HF_TOKEN: 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
+  HF_TOKEN: YOUR_TOKEN_HERE
 ---
 apiVersion: apps/v1
 kind: Deployment
